@@ -83,4 +83,4 @@ if __name__ == "__main__":
     elif len(sys.argv) == 3:
         convert(journal_dict, sys.argv[1], sys.argv[2])
     else:
-        print("usage: bibtex_abbr input.bib output.bib")
+        print("usage: bibtex_abbr input.bib [output.bib]")
