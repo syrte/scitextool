@@ -5,7 +5,12 @@ import sys
 
 
 def convert(bibtex_input, bibtex_output=None):
-    bibtex_database = bibtexparser.load(io.open(bibtex_input))
+    parser = bibtexparser.bparser.BibTexParser(
+        ignore_nonstandard_types=True,
+        homogenize_fields=False,
+        common_strings=True,
+    )
+    bibtex_database = parser.parse_file(io.open(bibtex_input))
 
     for entry in bibtex_database.entries:
         if 'author' in entry:
@@ -22,8 +27,7 @@ def convert(bibtex_input, bibtex_output=None):
             entry['author'] = " and ".join(authors)
 
         # entry['language'] = '{en}'
-        if 'language' in entry:
-            del entry['language']
+        entry.pop('language', None)
 
     if bibtex_output:
         bibtexparser.dump(bibtex_database, io.open(bibtex_output, 'w'))
