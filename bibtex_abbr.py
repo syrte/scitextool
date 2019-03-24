@@ -23,13 +23,14 @@ def reduce_abbr(string):
     return string
 
 
-def get_journal_dict():
-    import requests
-    from lxml import etree
-
+def make_journal_dict():
     urls = ["http://adsabs.harvard.edu/abs_doc/journals1.html",
             "http://ads.bao.ac.cn/abs_doc/journals1.html"]
 
+    print('making journal abbreviation list...')
+
+    import requests
+    from lxml import etree
     r = requests.get(urls[0])
     p = etree.HTML(r.content)
     xpaths = p.xpath('body/pre/a')
@@ -37,31 +38,49 @@ def get_journal_dict():
     journal_dict = {reduce_name(journal.tail): reduce_abbr(journal.text)
                     for journal in xpaths if journal.tail is not None}
 
-    # special cases
-    journal_dict.update({
-        'astrophysical journal letters': 'APJ',
-        'monthly notices of the royal astronomical society letters': 'MNRAS',
-        'journal of physics conference series': 'JPhCS',
-        'journal of statistical computation and simulation': 'JSCS',
-    })
-
+    print('done.')
     return journal_dict
 
 
-def convert(journal_dict, bibtex_input, bibtex_output=None):
-    bibtex_database = bibtexparser.load(io.open(bibtex_input))
+def load_journal_dict():
+    dir = os.path.dirname(os.path.realpath(__file__))
+    journal_dict_file = "%s/ads_journal_abbr.json" % dir
+    journal_dict_custom_file = "%s/ads_journal_abbr_custom.json" % dir
+
+    if not os.path.exists(journal_dict_file):
+        journal_dict = make_journal_dict()
+        json.dump(journal_dict, open(journal_dict_file, 'w'),
+                  indent=4, sort_keys=True)
+
+    journal_dict = json.load(open(journal_dict_file))
+    if os.path.exists(journal_dict_custom_file):
+        journal_dict_custom = json.load(open(journal_dict_custom_file))
+        journal_dict.update(journal_dict_custom)
+    return journal_dict
+
+
+def convert(bibtex_input, bibtex_output=None):
+    parser = bibtexparser.bparser.BibTexParser(
+        ignore_nonstandard_types=True,
+        homogenize_fields=False,
+        common_strings=True,
+    )
+    bibtex_database = parser.parse_file(io.open(bibtex_input))
+    journal_dict = load_journal_dict()
 
     for entry in bibtex_database.entries:
         if 'journal' in entry:
-            journal = entry['journal']
-            journal = reduce_name(journal)
+            journal_raw = entry['journal']
+            journal = reduce_name(journal_raw)
 
-            if journal in journal_dict:
+            if journal.startswith('arxiv'):
+                pass
+            elif journal in journal_dict:
                 entry['journal'] = journal_dict[journal]
             elif journal in journal_dict.values():
                 pass
             else:
-                print(u"Warning: No abbreviation for '{}'".format(journal), file=sys.stderr)
+                print(u"Warning: No abbreviation for '{}'".format(journal_raw), file=sys.stderr)
 
     if bibtex_output:
         bibtexparser.dump(bibtex_database, io.open(bibtex_output, 'w'))
@@ -70,17 +89,9 @@ def convert(journal_dict, bibtex_input, bibtex_output=None):
 
 
 if __name__ == "__main__":
-    journal_dict_file = "ads_journal_abbr.json"
-
-    if os.path.exists(journal_dict_file):
-        journal_dict = json.load(open(journal_dict_file))
-    else:
-        journal_dict = get_journal_dict()
-        json.dump(journal_dict, open(journal_dict_file, 'w'), indent=4, sort_keys=True)
-
     if len(sys.argv) == 2:
-        convert(journal_dict, sys.argv[1])
+        convert(sys.argv[1])
     elif len(sys.argv) == 3:
-        convert(journal_dict, sys.argv[1], sys.argv[2])
+        convert(sys.argv[1], sys.argv[2])
     else:
         print("usage: bibtex_abbr input.bib [output.bib]")
