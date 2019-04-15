@@ -25,7 +25,13 @@ def convert(bibtex_input, bibtex_output=None):
     bibtex_database = parser.parse_file(io.open(bibtex_input))
 
     for entry in bibtex_database.entries:
-        if entry['ENTRYTYPE'] != 'article':
+        if entry['ENTRYTYPE'] == 'book':
+            if 'title' in entry and 'url' in entry:
+                entry['title'] = r"{\href{%s}{%s}}" % (
+                    entry['url'], entry['title'])
+                entry.pop('url')
+            continue
+        elif entry['ENTRYTYPE'] != 'article':
             continue
 
         if 'journal' in entry:
