@@ -18,7 +18,7 @@ bibtex_abbr input.bib [output.bib]
 
 Modify `ads_journal_abbr_custom.json` to add your custom abbreviations.
 
-## bibtex_abbr.py
+## bibtex_hyperlink.py
 Create hyper links for doi, url or arxiv in `.bib` file.
 
 - for arxiv paper:
